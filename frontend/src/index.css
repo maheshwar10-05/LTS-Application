@@ -1,0 +1,140 @@
+:root {
+  --primary-color: #F25C27;
+  --secondary-color: #00A1D8;
+  --text-color: #333;
+  --bg-color: #fff;
+  /* Changed to white for cleaner look */
+  --white: #ffffff;
+  --gray: #e0e0e0;
+
+  /* LTS Specific Variables */
+  --lts-blue: #0079C1;
+  /* Main header blue */
+  --lts-dark-blue: #005A8C;
+  /* Darker blue for accents */
+  --lts-light-bg: #F5F5F5;
+  /* Light grey background */
+  --lts-border: #D1D1D1;
+  --lts-header-height: 40px;
+  --lts-nav-height: 35px;
+}
+
+body {
+  margin: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Updated font */
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--primary-color);
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  border-radius: 30px;
+  /* Rounded corners like original */
+  text-transform: uppercase;
+  font-size: 13px;
+  transition: background-color 0.3s;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background-color: #d1491b;
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: var(--white);
+}
+
+/* Header Styles */
+.header-top {
+  background-color: #fff;
+  padding: 20px 0;
+}
+
+.nav-main {
+  background-color: var(--secondary-color);
+  color: var(--white);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.nav-main ul {
+  display: flex;
+}
+
+.nav-main li {
+  padding: 0;
+}
+
+.nav-main li a {
+  display: block;
+  padding: 15px 20px;
+  color: white;
+  font-weight: bold;
+}
+
+.nav-main li a:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: white;
+}
+
+/* Product Card */
+.product-card {
+  background: white;
+  padding: 15px;
+  /* border: 1px solid var(--gray); Removed border for cleaner look */
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.product-card:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.product-image {
+  max-width: 100%;
+  height: 200px;
+  object-fit: contain;
+}
+
+.price {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 1.2em;
+  margin-top: 10px;
+}
+
+.badge {
+  font-size: 11px;
+  vertical-align: top;
+}
