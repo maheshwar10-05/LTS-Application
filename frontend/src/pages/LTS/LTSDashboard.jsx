@@ -1,60 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LTSSearchModal from '../../components/LTS/LTSSearchModal';
+import LTSCreateUENModal from '../../components/LTS/LTSCreateUENModal';
+import { AuthContext } from '../../context/AuthContext';
 
 const LTSDashboard = () => {
     const navigate = useNavigate();
-
-    // Initial Mock Data (seeded if empty)
-    const initialBorrowers = [
-        { id: 1, rrt: '+', prospect: 'N', name: 'jan09', uen: '3000000', connection: 'Existing', tin: '123456789', address: 'Toronto, ON, Canada', arrow: 'v' },
-        { id: 2, rrt: '+', prospect: 'N', name: 'Lending test', uen: '3000001', connection: 'Existing', tin: '987654321', address: 'New York, NY, USA', arrow: 'v' },
-        { id: 3, rrt: '+', prospect: 'N', name: 'new BBUS', uen: '3000002', connection: 'New', tin: '456123789', address: 'Chicago, IL, USA', arrow: 'v' },
-    ];
+    const { user } = useContext(AuthContext);
 
     const [borrowers, setBorrowers] = useState([]);
+    const [expandedBorrowerId, setExpandedBorrowerId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     const [showSearchModal, setShowSearchModal] = useState(false);
+    const [showCreateUENModal, setShowCreateUENModal] = useState(false);
     const [modalInitialTerm, setModalInitialTerm] = useState('');
     const [openMenuId, setOpenMenuId] = useState(null);
 
-    useEffect(() => {
-        const stored = localStorage.getItem('lts_borrowers');
-        if (stored) {
-            setBorrowers(JSON.parse(stored));
-        } else {
-            setBorrowers(initialBorrowers);
-            localStorage.setItem('lts_borrowers', JSON.stringify(initialBorrowers));
+    const fetchBorrowers = async () => {
+        try {
+            const userId = user ? user.id : 0;
+            const response = await fetch(`http://localhost:5000/api/lts/borrowers?userId=${userId}`);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                setBorrowers(data);
+            }
+        } catch (error) {
+            console.error('Error fetching borrowers:', error);
         }
-    }, []);
-
-    // Load borrowers only for the main dashboard list (optional, or just show all/recent)
-    // The user request implies the "Search" is the main interaction for finding specific things?
-    // But typically a dashboard shows a list AND has a lookup.
-    // We will keep the default list logic but REMOVE the inline filtering 'filteredBorrowers' logic
-    // because the user wants the "search popup" to appear when searching.
+    };
 
     useEffect(() => {
-        // Just ensure borrowers are loaded for the main/recent view if we keep it.
-        // If the user wants the *original* state where maybe the dashboard was just a list, 
-        // and search was a separate action.
-
-        // We won't filter 'borrowers' here based on 'searchTerm'. 
-        // Instead, 'searchTerm' will be passed to the modal.
-    }, [searchTerm]);
+        if (user) {
+            fetchBorrowers();
+        }
+    }, [user]);
 
     const toggleMenu = (id) => {
-        if (openMenuId === id) {
-            setOpenMenuId(null);
-        } else {
-            setOpenMenuId(id);
-        }
+        setOpenMenuId(openMenuId === id ? null : id);
+    };
+
+    const toggleExpand = (id) => {
+        setExpandedBorrowerId(expandedBorrowerId === id ? null : id);
     };
 
     const handleSearch = () => {
         setModalInitialTerm(searchTerm);
         setShowSearchModal(true);
+    };
+
+    const handleCreateSuccess = (newBorrower) => {
+        fetchBorrowers(); // Refresh list
     };
 
     return (
@@ -91,7 +87,6 @@ const LTSDashboard = () => {
                     >
                         <span style={{ marginRight: '5px' }}>&#128269;</span> Search
                     </button>
-                    {/* Reset/Clear if needed */}
                     {searchTerm && (
                         <button
                             onClick={() => setSearchTerm('')}
@@ -101,6 +96,13 @@ const LTSDashboard = () => {
                         </button>
                     )}
                 </div>
+
+                <button
+                    onClick={() => setShowCreateUENModal(true)}
+                    style={{ marginLeft: 'auto', padding: '5px 15px', backgroundColor: 'var(--lts-blue)', color: 'white', border: 'none', cursor: 'pointer' }}
+                >
+                    Create UEN
+                </button>
             </div>
 
             {/* Main Content Area */}
@@ -111,7 +113,7 @@ const LTSDashboard = () => {
             }}>
                 {/* Header Strip */}
                 <div style={{
-                    backgroundColor: 'var(--lts-blue)', // Using global var or fallback
+                    backgroundColor: 'var(--lts-blue)',
                     color: 'white',
                     padding: '10px 15px',
                     fontWeight: 'bold',
@@ -122,13 +124,12 @@ const LTSDashboard = () => {
                 }}>
                     <span>My Borrowers</span>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                        <span>&#9881;</span> {/* Settings Icon */}
-                        <span>&#10060;</span> {/* Close Icon */}
+                        <span>&#9881;</span>
+                        <span>&#10060;</span>
                     </div>
                 </div>
 
-                {/* Table Header - Updated Columns */}
-                {/* Columns: Select (i), Name, Prospect, UEN, Connection, TIN/SSN, Address */}
+                {/* Table Header */}
                 <div style={{ display: 'grid', gridTemplateColumns: '50px 2fr 60px 80px 80px 100px 2fr', backgroundColor: '#e6e6e6', fontWeight: 'bold', fontSize: '11px', color: '#333' }}>
                     <div style={{ padding: '8px', borderRight: '1px solid #ccc', textAlign: 'center' }}>Select &#9432;</div>
                     <div style={{ padding: '8px', borderRight: '1px solid #ccc' }}>Name</div>
@@ -139,64 +140,91 @@ const LTSDashboard = () => {
                     <div style={{ padding: '8px', borderRight: '1px solid #ccc' }}>Address</div>
                 </div>
 
-                {/* Table Rows or Not Found State */}
+                {/* Table Rows */}
                 <>
-                    {/* We display ALL borrowers here by default, or the filtered list if we kept inline filtering 
-                            BUT the user asked to "revert... when entered another pop up... was displayed".
-                            So we show the standard list here, and the search happens in the MODAL. */}
                     {borrowers.map((b, idx) => (
-                        <div key={idx} style={{
-                            display: 'grid',
-                            gridTemplateColumns: '50px 2fr 60px 80px 80px 100px 2fr',
-                            borderBottom: '1px solid #eee',
-                            fontSize: '12px',
-                            color: '#333',
-                            backgroundColor: idx % 2 === 0 ? '#f9f9f9' : 'white'
-                        }}>
-                            {/* Select / Action Column */}
+                        <div key={b.id}>
                             <div style={{
-                                padding: '8px',
-                                borderRight: '1px solid #eee',
-                                textAlign: 'center',
-                                fontWeight: 'bold',
-                                position: 'relative'
+                                display: 'grid',
+                                gridTemplateColumns: '50px 2fr 60px 80px 80px 100px 2fr',
+                                borderBottom: '1px solid #eee',
+                                fontSize: '12px',
+                                color: '#333',
+                                backgroundColor: idx % 2 === 0 ? '#f9f9f9' : 'white'
                             }}>
-                                <span
-                                    onClick={() => toggleMenu(b.id)}
-                                    style={{ cursor: 'pointer', userSelect: 'none', color: 'var(--lts-blue)', fontSize: '16px' }}
-                                >
-                                    {b.rrt || '+'}
-                                </span>
+                                {/* Select / Action Column */}
+                                <div style={{
+                                    padding: '8px',
+                                    borderRight: '1px solid #eee',
+                                    textAlign: 'center',
+                                    fontWeight: 'bold',
+                                    position: 'relative',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    gap: '5px'
+                                }}>
+                                    <span
+                                        onClick={() => toggleExpand(b.id)}
+                                        style={{ cursor: 'pointer', userSelect: 'none', color: 'var(--lts-blue)', fontSize: '14px', border: '1px solid #ccc', padding: '0 4px', height: 'fit-content' }}
+                                    >
+                                        {expandedBorrowerId === b.id ? '-' : '+'}
+                                    </span>
+                                    <span
+                                        onClick={() => toggleMenu(b.id)}
+                                        style={{ cursor: 'pointer', userSelect: 'none', color: 'var(--lts-blue)', fontSize: '14px' }}
+                                    >
+                                        {b.arrow || 'v'}
+                                    </span>
 
-                                {/* Dropdown Menu */}
-                                {openMenuId === b.id && (
-                                    <div style={{
-                                        position: 'absolute', top: '100%', left: '0', zIndex: 10,
-                                        backgroundColor: 'white', border: '1px solid #ccc', boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                                        whiteSpace: 'nowrap', textAlign: 'left'
-                                    }}>
-                                        <div
-                                            onClick={() => navigate('/deal-creation', { state: { entityName: b.name, uen: b.uen } })}
-                                            style={{
-                                                padding: '5px 10px', fontSize: '11px', cursor: 'pointer', color: '#333', backgroundColor: 'white'
-                                            }}
-                                            onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
-                                            onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
-                                        >
-                                            Create New LTS
+                                    {/* Dropdown Menu */}
+                                    {openMenuId === b.id && (
+                                        <div style={{
+                                            position: 'absolute', top: '100%', left: '0', zIndex: 10,
+                                            backgroundColor: 'white', border: '1px solid #ccc', boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                                            whiteSpace: 'nowrap', textAlign: 'left'
+                                        }}>
+                                            <div
+                                                onClick={() => navigate('/deal-creation', { state: { entityName: b.name, uen: b.uen, borrowerId: b.id } })}
+                                                style={{
+                                                    padding: '5px 10px', fontSize: '11px', cursor: 'pointer', color: '#333', backgroundColor: 'white'
+                                                }}
+                                                onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
+                                                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                                            >
+                                                Create New LTS
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
+
+                                <div style={{ padding: '8px', borderRight: '1px solid #eee' }}>{b.name} {b.is_favorite && <span style={{ color: 'gold' }}>&#9733;</span>}</div>
+                                <div style={{ padding: '8px', borderRight: '1px solid #eee', textAlign: 'center' }}>{b.prospect}</div>
+                                <div style={{ padding: '8px', borderRight: '1px solid #eee', textAlign: 'center' }}>{b.uen}</div>
+                                <div style={{ padding: '8px', borderRight: '1px solid #eee', textAlign: 'center' }}>{b.connection}</div>
+                                <div style={{ padding: '8px', borderRight: '1px solid #eee', textAlign: 'center' }}>{b.tin}</div>
+                                <div style={{ padding: '8px', borderRight: '1px solid #eee' }}>{b.address}</div>
                             </div>
 
-                            <div style={{ padding: '8px', borderRight: '1px solid #eee' }}>{b.name}</div>
-                            <div style={{ padding: '8px', borderRight: '1px solid #eee', textAlign: 'center' }}>{b.prospect}</div>
-                            <div style={{ padding: '8px', borderRight: '1px solid #eee', textAlign: 'center' }}>{b.uen}</div>
-                            <div style={{ padding: '8px', borderRight: '1px solid #eee', textAlign: 'center' }}>{b.connection}</div>
-                            <div style={{ padding: '8px', borderRight: '1px solid #eee', textAlign: 'center' }}>{b.tin}</div>
-                            <div style={{ padding: '8px', borderRight: '1px solid #eee' }}>{b.address}</div>
+                            {/* Expanded Section */}
+                            {expandedBorrowerId === b.id && (
+                                <div style={{ padding: '10px', borderBottom: '1px solid #ccc', backgroundColor: '#f0f8ff' }}>
+                                    <div style={{ display: 'flex', borderBottom: '1px solid #ccc', marginBottom: '10px' }}>
+                                        <div style={{ padding: '5px 10px', fontWeight: 'bold', borderBottom: '2px solid var(--lts-blue)', color: 'var(--lts-blue)' }}>Facility Summary</div>
+                                        <div style={{ padding: '5px 10px', color: '#666', cursor: 'pointer' }}>Collateral Summary</div>
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: '#333' }}>
+                                        No facilities found for this borrower.
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))}
+
+                    {borrowers.length === 0 && (
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#999', fontSize: '13px' }}>
+                            No borrowers found. Click "Create UEN" to add one.
+                        </div>
+                    )}
                 </>
 
             </div>
@@ -211,7 +239,17 @@ const LTSDashboard = () => {
                     />
                 )
             }
-        </div >
+
+            {/* Create UEN Modal */}
+            {
+                showCreateUENModal && (
+                    <LTSCreateUENModal
+                        onClose={() => setShowCreateUENModal(false)}
+                        onSuccess={handleCreateSuccess}
+                    />
+                )
+            }
+        </div>
     );
 };
 
